@@ -1,77 +1,95 @@
-import time
 
 import requests
-
-from config import TOKEN
-
+from config  import TOKEN
 
 class Bot:
-    
-    def __init__(self, token: str):
-        self.BASE_URL = F'https://api.telegram.org/bot{token}'
-        self.offset = None
+    def __init__(self, token: str) -> None:
+        self.url = f"https://api.telegram.org/bot{token}"
 
-    def get_me(self) -> dict:
-        get_me_url = f'{self.BASE_URL}/getMe'
-        
+    def get_me(self):
+        get_me_url = f"{self.url}/getMe"
         response = requests.get(get_me_url)
 
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception('Telegram server xatolik qaytardi!')
+        return response.json() 
+   
 
-    def get_updates(self) -> list[dict]:
-        get_updates_url = f'{self.BASE_URL}/getUpdates'
-        
-        params = {
-            'offset': self.offset,
-            'limit': 20
+    def get_update(self):
+        get_update_url = f"{self.url}/getUpdates"
+        response = requests.get(get_update_url)
+
+        return response.json()
+
+
+
+    def send_message(self, chat_id: int, text: str):
+        get_send_massage_url = f"{self.url}/sendMessage"
+
+        params ={
+            "chat_id": chat_id,
+            "text": text
         }
-        response = requests.get(get_updates_url, params=params)
+        requests.get(get_send_massage_url, params=params)
 
-        if response.status_code == 200:
-            return response.json()['result']
-        else:
-            raise Exception('Telegram server xatolik qaytardi!')
-        
-    def send_message(self, chat_id: str, text: str) -> None:
-        send_message_url = f'{self.BASE_URL}/sendMessage'
-        
+    def send_voice(self, chat_id: int, file_id: str):
+        url = f"{self.url}/sendVoice"
         params = {
-            'chat_id': chat_id,
-            'text': text
+            "chat_id": chat_id,
+            "voice": file_id
         }
-        requests.get(send_message_url, params=params)
+        requests.get(url, params=params)
 
-    def send_photo(self, chat_id: str, photo: str) -> None:
-        pass
+    def send_photo(self, chat_id: int, file_id: str):
+        url = f"{self.url}/sendPhoto"
+        params = {
+            "chat_id": chat_id,
+            "photo": file_id
+        }
 
-    def start_polling(self) -> None:
-        
+        requests.get(url, params=params)
+
+
+
+    def echo(self):
+        offset = 0
+
         while True:
-            updates = self.get_updates()
-            time.sleep(1)
+            response = requests.get(
+                f"{self.url}/getUpdates",
+                params={"offset": offset, "timeout": 30}
+            ).json()
 
-            for update in updates:
-                message = update.get('message')
-                if message:
-                    text = message.get('text')
-                    if text:
-                        self.send_message(
-                            chat_id=message['chat']['id'],
-                            text=text
-                        )
-                    
-                    photo = message.get('photo')
-                    if photo:
-                        # send photo
-                        pass
+            for update in response["result"]:
+                offset = update["update_id"] + 1
 
-                    # ....
-                    
-                self.offset = update['update_id'] + 1
+                message = update.get("message")
+                if not message:
+                    continue
 
+                chat_id = message["chat"]["id"]
 
+                if "text" in message:
+                    self.send_message(chat_id, message["text"])
+
+                elif "photo" in message:
+                    file_id = message["photo"][-1]["file_id"]
+                    self.send_photo(8416278601, file_id)
+
+                elif "voice" in message:
+                    file_id = message["voice"]["file_id"]
+                    self.send_voice(8416278601, file_id)
+
+    
 bot = Bot(TOKEN)
-bot.start_polling()
+
+bot.send_message(chat_id = 8416278601, text = "Salom bu bot ishga tushdi")
+# pprint(bot.get_me())
+# pprint(bot.get_update())
+bot.echo()
+
+
+
+
+
+
+
+
